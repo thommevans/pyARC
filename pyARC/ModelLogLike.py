@@ -1,13 +1,15 @@
 import pdb, sys, os, time
 import numpy as np
 import scipy.interpolate
+import tempfile
+
 
 """
 This module contains routines for evaluating the log likelihood for some standard atmosphere models.
 """
 
 
-def ClearChemEqTransmission( ATMO, pars, priors, DataArr, UncArr ):
+def ClearChemEqTransmission( parsarr, keys, ARC ):
     """
     Evaluates the log likelihood for a clear atmosphere in chemical equilibrium
     assuming an isothermal PT profile given an observed spectrum for the planet. 
@@ -15,9 +17,10 @@ def ClearChemEqTransmission( ATMO, pars, priors, DataArr, UncArr ):
     atmospheric metallicity (MdH), and the C/O ratio (COratio).
 
     Inputs:
-    ATMO - An ATMO object with namelist parameters set appropriately.
-    pars - Dictionary containing values for each of the free parameters.
-    priors - Dictionary containing prior functions for each of the free parameters.
+    parsarr - Array containing values for each of the model parameters.
+    keys - String labels for each parameter in parsarr that can be used to 
+           map to the prior functions.
+    ARC - An ARC object.
     DataArr - Dictionary with separate named entries for each dataset comprised
               of Nix2 array where Ni is the number of datapoints in the ith dataset.
     UncArr - Same as DataArr except that it contains the associated measurement
@@ -26,36 +29,53 @@ def ClearChemEqTransmission( ATMO, pars, priors, DataArr, UncArr ):
     
     t1 = time.time()
 
+    datasets = ARC.TransmissionData.keys()
+    ndatasets = len( datasets )
+    DataArr = []
+    UncArr = []    
+    for i in range( ndatasets ):
+        dataseti = ARC.TransmissionData[datasets[i]]
+        DataArr += [ dataseti[:,2] ]
+        UncArr += [ dataseti[:,3] ]        
+    DataArr = np.concatenate( DataArr )
+    UncArr = np.concatenate( UncArr )
+
+    npar = len( keys )
+    pars = {}
+    for i in range( npar ):
+        pars[keys[i]] = parsarr[i]
+
+    
     # Evaluate the prior likelihood:
     logp_prior = 0
-    for key in pars.keys:
-        logp_prior = priors[key]( pars[key] )
+    for key in pars.keys():
+        logp_prior += ARC.Priors[key]( pars[key] )
 
     # Install values for the free parameters:
-    ATMO.teff = pars['Teff']
-    ATMO.MdH = pars['MdH']
-    ATMO.COratio = pars['COratio']
+    ARC.ATMO.teff = pars['Teff']
+    ARC.ATMO.MdH = pars['MdH']
+    ARC.ATMO.COratio = pars['COratio']
 
     # Use tempfile to create input and output files so that there
     # will be no duplication e.g. if running many walkers: 
     tempfileobj1 = tempfile.NamedTemporaryFile( mode='w+b', delete=False )
-    ATMO.ftrans_spec = tempfileobj1.name
+    ARC.ATMO.ftrans_spec = tempfileobj1.name
     tempfileobj2 = tempfile.NamedTemporaryFile( mode='w+b', delete=False )
-    ATMO.infile_path = tempfileobj2.name
+    ARC.ATMO.infile_path = tempfileobj2.name
 
     # Compute the model transmission spectrum:
-    ATMO.RunATMO()
-    ATMO.ReadTransmissionModel( ncdf_fpath=tempfileobj1.name )
-    WavMicronModel = ATMO.TransmissionModel[:,0]
-    RpRsModel = ATMO.TransmissionModel[:,1] - pars['dRpRs']
+    ARC.ATMO.RunATMO()
+    ARC.ATMO.ReadTransmissionModel( ncdf_fpath=tempfileobj1.name )
+    WavMicronModel = ARC.ATMO.TransmissionModel[:,0]
+    RpRsModel = ARC.ATMO.TransmissionModel[:,1] - pars['dRpRs']
 
     # Bin the transmission spectrum into the data bandpasses:
     interpf = scipy.interpolate.interp1d( WavMicronModel, RpRsModel )
-    datasets = ATMO.TransmissionData.keys()
+    datasets = ARC.TransmissionData.keys()
     ndatasets = len( datasets )
     ModelArr = []
     for i in range( ndatasets ):
-        dataseti = ATMO.TransmissionData[datasets[i]]
+        dataseti = ARC.TransmissionData[datasets[i]]
         ledges = dataseti[:,0]
         uedges = dataseti[:,1]
         nchannels = len( ledges )
