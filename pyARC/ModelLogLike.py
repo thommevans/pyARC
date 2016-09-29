@@ -45,59 +45,63 @@ def ClearChemEqTransmission( parsarr, keys, ARC ):
     for i in range( npar ):
         pars[keys[i]] = parsarr[i]
 
-    
     # Evaluate the prior likelihood:
     logp_prior = 0
     for key in pars.keys():
         logp_prior += ARC.Priors[key]( pars[key] )
 
-    # Install values for the free parameters:
-    ARC.ATMO.teff = pars['Teff']
-    ARC.ATMO.MdH = pars['MdH']
-    ARC.ATMO.COratio = pars['COratio']
+    # If we're in an allowable region of parameter space,
+    # proceed to run ATMO:
+    if np.isfinite( logp_prior ):
+        # Install values for the free parameters:
+        ARC.ATMO.teff = pars['Teff']
+        ARC.ATMO.MdH = pars['MdH']
+        ARC.ATMO.COratio = pars['COratio']
 
-    # Use tempfile to create input and output files so that there
-    # will be no duplication e.g. if running many walkers: 
-    tempfileobj1 = tempfile.NamedTemporaryFile( mode='w+b', delete=False )
-    ARC.ATMO.ftrans_spec = tempfileobj1.name
-    tempfileobj2 = tempfile.NamedTemporaryFile( mode='w+b', delete=False )
-    ARC.ATMO.infile_path = tempfileobj2.name
+        # Use tempfile to create input and output files so that there
+        # will be no duplication e.g. if running many walkers: 
+        tempfileobj1 = tempfile.NamedTemporaryFile( mode='w+b', delete=False )
+        ARC.ATMO.ftrans_spec = tempfileobj1.name
+        tempfileobj2 = tempfile.NamedTemporaryFile( mode='w+b', delete=False )
+        ARC.ATMO.infile_path = tempfileobj2.name
 
-    # Compute the model transmission spectrum:
-    ARC.ATMO.RunATMO()
-    ARC.ATMO.ReadTransmissionModel( ncdf_fpath=tempfileobj1.name )
-    WavMicronModel = ARC.ATMO.TransmissionModel[:,0]
-    RpRsModel = ARC.ATMO.TransmissionModel[:,1] - pars['dRpRs']
+        # Compute the model transmission spectrum:
+        ARC.ATMO.RunATMO()
+        ARC.ATMO.ReadTransmissionModel( ncdf_fpath=tempfileobj1.name )
+        WavMicronModel = ARC.ATMO.TransmissionModel[:,0]
+        RpRsModel = ARC.ATMO.TransmissionModel[:,1] - pars['dRpRs']
 
-    # Bin the transmission spectrum into the data bandpasses:
-    interpf = scipy.interpolate.interp1d( WavMicronModel, RpRsModel )
-    datasets = ARC.TransmissionData.keys()
-    ndatasets = len( datasets )
-    ModelArr = []
-    for i in range( ndatasets ):
-        dataseti = ARC.TransmissionData[datasets[i]]
-        ledges = dataseti[:,0]
-        uedges = dataseti[:,1]
-        nchannels = len( ledges )
-        ModelArri = np.zeros( nchannels )
-        for j in range( nchannels ):
-            # Binning the model could be done more carefully with
-            # actual instrument throughputs defined:
-            WavChannel = np.r_[ ledges[j]:uedges[j]:1j*100 ]
-            ModelArri[j] = np.mean( interpf( WavChannel ) )
-        ModelArr += [ ModelArri ]
-    ModelArr = np.concatenate( ModelArr )
+        # Bin the transmission spectrum into the data bandpasses:
+        interpf = scipy.interpolate.interp1d( WavMicronModel, RpRsModel )
+        datasets = ARC.TransmissionData.keys()
+        ndatasets = len( datasets )
+        ModelArr = []
+        for i in range( ndatasets ):
+            dataseti = ARC.TransmissionData[datasets[i]]
+            ledges = dataseti[:,0]
+            uedges = dataseti[:,1]
+            nchannels = len( ledges )
+            ModelArri = np.zeros( nchannels )
+            for j in range( nchannels ):
+                # Binning the model could be done more carefully with
+                # actual instrument throughputs defined:
+                WavChannel = np.r_[ ledges[j]:uedges[j]:1j*100 ]
+                ModelArri[j] = np.mean( interpf( WavChannel ) )
+            ModelArr += [ ModelArri ]
+        ModelArr = np.concatenate( ModelArr )
 
-    # Compute the residuals and data log likelihood:
-    ResidsArr = DataArr - ModelArr
-    ndat = len( ResidsArr )
-    logp_data = logp_mvnormal_whitenoise( ResidsArr, UncArr, ndat )
-    os.remove( tempfileobj1.name )
-    os.remove( tempfileobj2.name )
-    # TODO = COULD SAVE ALL OF THESE TRANSMISSION SPECTRA
-    # FOR PLOTTING AT THE END
-
-    logp = logp_prior + logp_data
+        # Compute the residuals and data log likelihood:
+        ResidsArr = DataArr - ModelArr
+        ndat = len( ResidsArr )
+        logp_data = logp_mvnormal_whitenoise( ResidsArr, UncArr, ndat )
+        os.remove( tempfileobj1.name )
+        os.remove( tempfileobj2.name )
+        # TODO = COULD SAVE ALL OF THESE TRANSMISSION SPECTRA
+        # FOR PLOTTING AT THE END
+        #print '\n\n\n aaaaaaaa', logp_data, logp_prior, 'bbbbbbbbb\n\n\n'
+        logp = logp_prior + logp_data
+    else:
+        logp = -np.inf
     t2 = time.time()
     return logp
 

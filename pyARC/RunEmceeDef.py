@@ -25,6 +25,7 @@ def Main( ARC, nchains=1, nwalkers=100, nsteps=100, threads=1, ncorr_burn=0 ):
         # Run the emcee sampler with progress bar:
         pbar = progressbar( nsteps )
         nstep_increment = max( [ int( np.round( 0.01*nsteps ) ), 1 ] )
+        #print '\n\n\nxxxxxxxxxx', nwalkers, nsteps, 'yyyyyyyy\n\n\n\n'
         t1 = time.time()
         for i, result in enumerate( z.sample( p0, iterations=nsteps ) ):
             pbar.animate( i+1 )
