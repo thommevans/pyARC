@@ -31,6 +31,7 @@ def Main( ATMO ):
     """
     
     ATMO.executable = 'atmo.x'
+    ATMO.nice = None
     ATMO.infile_path = 'ptchem.in' # ATMO input file path
 
     # PARAM: Parameters for ATMO

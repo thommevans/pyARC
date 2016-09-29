@@ -27,11 +27,13 @@ TRANSMISSIONMODEL = PrepDataset.TRANSMISSIONMODEL
 TRANSMISSIONDATA = PrepDataset.TRANSMISSIONDATA
 
 
-def Main( nchains=1, nwalkers=100, nsteps=100, threads=1, ncorr_burn=0 ):
+def Main( nchains=1, nwalkers=100, nsteps=100, threads=1, ncorr_burn=0, nice=None ):
 
     # Initialise the ATMO and ARC objects:
     ATMO = pyATMO.ATMO()
     InstallNamelistParameters.Main( ATMO )
+    if nice!=None:
+        ATMO.nice = nice
     Retrieval = pyARC.ARC()
     Retrieval.ATMO = ATMO
 

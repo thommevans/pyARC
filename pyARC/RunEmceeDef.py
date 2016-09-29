@@ -41,6 +41,8 @@ def Main( ARC, nchains=1, nwalkers=100, nsteps=100, threads=1, ncorr_burn=0 ):
         walker_chain_k['logp'] = z.lnprobability.T
         walker_chains += [ walker_chain_k ]
 
+    ARC.WalkerChains = walker_chains
+    
     return None
 
 
