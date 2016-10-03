@@ -20,7 +20,8 @@ def Main( ARC, nchains=1, nwalkers=100, nsteps=100, threads=1, ncorr_burn=0 ):
             p0[:,i] = ARC.InitParSampleFuncs[keys[i]]( nwalkers )
 
         # Initialise the emcee sampler:
-        z = emcee.EnsembleSampler( nwalkers, npar, ARC.LogLikeFunc, threads=threads, args=(keys,ARC) )
+        z = emcee.EnsembleSampler( nwalkers, npar, ARC.LogLikeFunc, threads=threads, \
+                                   args=(keys,ARC) )
 
         # Run the emcee sampler with progress bar:
         pbar = progressbar( nsteps )

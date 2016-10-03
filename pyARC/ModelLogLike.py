@@ -105,7 +105,7 @@ def ClearChemEqIsothermTransmission( parsarr, keys, ARC ):
     return logp
 
 
-def ClearChemManIsothermTransmission( parsarr, keys, ARC, freeabundances ):
+def ClearChemManIsothermTransmission( parsarr, keys, ARC ):
     """
     Evaluates the log likelihood for a clear atmosphere in with manual abundances
     for specified chemical species assuming an isothermal PT profile given an 
@@ -118,8 +118,6 @@ def ClearChemManIsothermTransmission( parsarr, keys, ARC, freeabundances ):
     keys - String labels for each parameter in parsarr that can be used to 
            map to the prior functions.
     ARC - An ARC object.
-    freeabundances - A list containing the names of the species with free
-                     abundances.
     """
     
     t1 = time.time()
@@ -157,7 +155,7 @@ def ClearChemManIsothermTransmission( parsarr, keys, ARC, freeabundances ):
         ARC.ATMO.teff = pars['Teff']
         # Install the free abundances manually:
         ARC.ATMO.chem = 'man'
-        for key in freeabundances:
+        for key in ARC.FreeSpecies:
             ARC.ATMO.abundances[key] = pars[key]
 
         # Use tempfile to create input and output files so that there
@@ -168,6 +166,7 @@ def ClearChemManIsothermTransmission( parsarr, keys, ARC, freeabundances ):
 
         # Compute the model transmission spectrum:
         ARC.ATMO.RunATMO()
+
         ARC.ATMO.ReadTransmissionModel( ncdf_fpath=ARC.ATMO.ftrans_spec )
         WavMicronModel = ARC.ATMO.TransmissionModel[:,0]
         RpRsModel = ARC.ATMO.TransmissionModel[:,1] - pars['dRpRs']

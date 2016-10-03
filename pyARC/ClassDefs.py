@@ -13,6 +13,11 @@ class ARC():
         ARC object.
         """
 
+        # List containing names of chemical species that
+        # will have variable abundances in the retrieval:
+        self.FreeSpecies = [ None ] # todo = think more about whether or not there's
+                                    # a better way to do this.
+        
         # Dictionaries for holding Transmission data and throughputs:
         self.TransmissionData = {}
         self.TransmissionBandpass = {}
