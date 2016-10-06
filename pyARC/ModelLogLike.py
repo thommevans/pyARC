@@ -58,7 +58,9 @@ def ClearChemEqIsothermTransmission( parsarr, keys, ARC ):
         ARC.ATMO.teff = pars['Teff']
         ARC.ATMO.MdH = pars['MdH']
         ARC.ATMO.COratio = pars['COratio']
-
+        if ARC.verbose==True:
+            print '\nSetting:\nTeff = {0} K\nMdH = {1}\nCOratio = {2}'.\
+                  format( ATC.ATMO.teff, ARC.ATMO.MdH, ARC.ATMO.COratio )
         # Use tempfile to create input and output files so that there
         # will be no duplication e.g. if running many walkers: 
         tempfileobj = tempfile.NamedTemporaryFile( mode='w+b', dir=tmpdir, suffix='.in', delete=False )
@@ -72,7 +74,7 @@ def ClearChemEqIsothermTransmission( parsarr, keys, ARC ):
         RpRsModel = ARC.ATMO.TransmissionModel[:,1] - pars['dRpRs']
 
         # Bin the transmission spectrum into the data bandpasses:
-        interpf = scipy.interpolate.interp1d( WavMicronModel, RpRsModel )
+        interpf = scipy.interpolate.interp1d( WavMicronModel, RpRsModel )        
         datasets = ARC.TransmissionData.keys()
         ndatasets = len( datasets )
         ModelArr = []
@@ -155,8 +157,12 @@ def ClearChemManIsothermTransmission( parsarr, keys, ARC ):
         ARC.ATMO.teff = pars['Teff']
         # Install the free abundances manually:
         ARC.ATMO.chem = 'man'
-        for key in ARC.FreeSpecies:
-            ARC.ATMO.abundances[key] = pars[key]
+        if ARC.verbose==True:
+            print '\nSetting abundances:'
+            for key in ARC.FreeSpecies:
+                ARC.ATMO.abundances[key] = pars[key]
+                print ' {0} --> {1}'.format( key, ARC.ATMO.abundances[key] )
+            print 'Teff = {0} K\n'.format( ARC.ATMO.teff )
 
         # Use tempfile to create input and output files so that there
         # will be no duplication e.g. if running many walkers: 
@@ -166,7 +172,7 @@ def ClearChemManIsothermTransmission( parsarr, keys, ARC ):
 
         # Compute the model transmission spectrum:
         ARC.ATMO.RunATMO()
-
+        
         ARC.ATMO.ReadTransmissionModel( ncdf_fpath=ARC.ATMO.ftrans_spec )
         WavMicronModel = ARC.ATMO.TransmissionModel[:,0]
         RpRsModel = ARC.ATMO.TransmissionModel[:,1] - pars['dRpRs']
@@ -175,19 +181,24 @@ def ClearChemManIsothermTransmission( parsarr, keys, ARC ):
         interpf = scipy.interpolate.interp1d( WavMicronModel, RpRsModel )
         datasets = ARC.TransmissionData.keys()
         ndatasets = len( datasets )
+        WavArr = []
         ModelArr = []
         for i in range( ndatasets ):
             dataseti = ARC.TransmissionData[datasets[i]]
             ledges = dataseti[:,0]
             uedges = dataseti[:,1]
             nchannels = len( ledges )
+            WavArri = np.zeros( nchannels )
             ModelArri = np.zeros( nchannels )
             for j in range( nchannels ):
                 # Binning the model could be done more carefully with
                 # actual instrument throughputs defined:
                 WavChannel = np.r_[ ledges[j]:uedges[j]:1j*100 ]
+                WavArri[j] = 0.5*( ledges[j] + uedges[j] )
                 ModelArri[j] = np.mean( interpf( WavChannel ) )
+            WavArr += [ WavArri ]
             ModelArr += [ ModelArri ]
+        WavArr = np.concatenate( WavArr )
         ModelArr = np.concatenate( ModelArr )
 
         # Compute the residuals and data log likelihood:
