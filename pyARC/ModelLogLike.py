@@ -163,13 +163,13 @@ def ClearChemManIsothermTransmission( parsarr, keys, ARC ):
                 ARC.ATMO.abundances[key] = pars[key]
                 print ' {0} --> {1}'.format( key, ARC.ATMO.abundances[key] )
             print 'Teff = {0} K\n'.format( ARC.ATMO.teff )
-
+            
         # Use tempfile to create input and output files so that there
         # will be no duplication e.g. if running many walkers: 
         tempfileobj = tempfile.NamedTemporaryFile( mode='w+b', dir=tmpdir, suffix='.in', delete=False )
         ARC.ATMO.infile_path = tempfileobj.name
         ARC.ATMO.ftrans_spec = tempfileobj.name.replace( '.in', '.ncdf' )
-
+        
         # Compute the model transmission spectrum:
         ARC.ATMO.RunATMO()
         

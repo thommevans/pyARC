@@ -35,6 +35,8 @@ class ARC():
 
         # Controls for emcee optimisation:
         self.InitParSampleFuncs = {}
+
+        self.verbose = False
         
         return None
 
